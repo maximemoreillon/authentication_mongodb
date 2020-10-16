@@ -1,0 +1,14 @@
+stages:
+  - containerization
+
+variables:
+  APPLICATION_NAME: authentication-mongo
+  DOCKER_IMAGE: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
+
+
+containerization:
+  stage: containerization
+  script:
+    - echo "${CONTAINER_REGISTRY_PASSWORD}" | docker login ${CONTAINER_REGISTRY} --username ${CONTAINER_REGISTRY_USERNAME} --password-stdin
+    - docker build -t ${DOCKER_IMAGE} .
+    - docker push ${DOCKER_IMAGE}

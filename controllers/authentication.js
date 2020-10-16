@@ -20,6 +20,7 @@ let find_user_in_db = (identifier) => {
         { username: identifier },
         { email_address: identifier },
         { email: identifier },
+        { _id: identifier },
       ]}
 
       db.db(mongodb.db)
@@ -38,7 +39,7 @@ let find_user_in_db = (identifier) => {
         // Resolve with user
         resolve(user)
 
-        console.log(`[MongoDB] User ${user.username} found in the database`)
+        console.log(`[MongoDB] User ${user._id} found in the database`)
 
       })
     })
@@ -58,7 +59,7 @@ let check_password = (password_plain, user) => {
 
       resolve(user)
 
-      console.log(`[Auth] Password correct for user ${user.username}`)
+      console.log(`[Auth] Password correct for user ${user._id}`)
 
     })
 
@@ -83,7 +84,7 @@ let generate_token = (user) => {
       // Resolve with token
       resolve(token)
 
-      console.log(`[Auth] Token generated for user ${user.username}`)
+      console.log(`[Auth] Token generated for user ${user._id}`)
 
     })
   })
@@ -106,6 +107,21 @@ let verify_token = (token) => {
       console.log(`[Auth] Token decoded successfully`)
 
     })
+  })
+}
+
+let retrieve_token = (req) => {
+  return new Promise ( (resolve, reject) => {
+
+    const token = req.body.token
+      || req.body.jwt
+      || req.query.jwt
+      || req.query.token
+
+    if(!token) reject({code: 400, message: `Missing token`})
+
+    resolve(token)
+
   })
 }
 
@@ -136,15 +152,39 @@ exports.login = (req, res) => {
 
 exports.decode_token = (req, res) => {
 
-  const token = req.body.token
-    || req.body.jwt
-
-  if(!token) return res.status(400).send(`Missing token`)
-
-  verify_token(token)
+  retrieve_token(req)
+  .then( token => {return verify_token(token)})
   .then(decoded_token => { res.send(decoded_token) })
   .catch(error => {
     console.log(error.message || error)
+    res.status(error.code || 500).send(error.message || error)
+  })
+
+}
+
+exports.find_user_using_token = (req, res) => {
+
+  retrieve_token(req)
+  .then( token => {return verify_token(token)})
+  .then( decoded_token => {
+
+    const user_id = decoded_token.user_id
+    if(!user_id) throw {code: 400, message: `No user ID in token`}
+
+    try {
+      const identifier = mongodb.ObjectID(user_id)
+      return find_user_in_db(identifier)
+    } catch (e) {
+      throw `Invalid user ID`
+    }
+
+  })
+  .then( user => {
+    console.log(`[Auth] user ${user._id} retrieved using token`)
+    res.send(user)
+  })
+  .catch(error => {
+    console.log(`[Auth] ${error.message || error}`)
     res.status(error.code || 500).send(error.message || error)
   })
 
