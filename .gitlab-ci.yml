@@ -8,7 +8,9 @@ variables:
 
 containerization:
   stage: containerization
+   tags:
+    - moreillon
   script:
-    - echo "${CONTAINER_REGISTRY_PASSWORD}" | docker login ${CONTAINER_REGISTRY} --username ${CONTAINER_REGISTRY_USERNAME} --password-stdin
+    - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin;
     - docker build -t ${DOCKER_IMAGE} .
     - docker push ${DOCKER_IMAGE}
