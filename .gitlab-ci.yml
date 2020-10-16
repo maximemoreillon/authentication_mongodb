@@ -8,7 +8,7 @@ variables:
 
 containerization:
   stage: containerization
-   tags:
+  tags:
     - moreillon
   script:
     - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin;
