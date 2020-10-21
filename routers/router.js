@@ -34,11 +34,23 @@ router.route('/login')
   .post(authentication_controller.login)
 
 // Token management
+router.route('/whoami')
+  .get(authentication_controller.whoami)
+  .post(authentication_controller.whoami)
+
 router.route('/verify_token')
   .get(authentication_controller.decode_token)
   .post(authentication_controller.decode_token)
 
 router.route('/verify_jwt')
+  .get(authentication_controller.decode_token)
+  .post(authentication_controller.decode_token)
+
+router.route('/decode_token')
+  .get(authentication_controller.decode_token)
+  .post(authentication_controller.decode_token)
+
+router.route('/decode_jwt')
   .get(authentication_controller.decode_token)
   .post(authentication_controller.decode_token)
 

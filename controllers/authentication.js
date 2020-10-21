@@ -110,7 +110,8 @@ let verify_token = (token) => {
   })
 }
 
-let retrieve_token = (req) => {
+
+let retrieve_token_from_body_or_query = (req) => {
   return new Promise ( (resolve, reject) => {
 
     const token = req.body.token
@@ -118,11 +119,30 @@ let retrieve_token = (req) => {
       || req.query.jwt
       || req.query.token
 
-    if(!token) reject({code: 400, message: `Missing token`})
+    if(!token) return reject({code: 400, message: `Missing token`})
 
     resolve(token)
 
   })
+}
+
+let retrieve_token_from_headers = (req) => {
+  return new Promise ( (resolve, reject) => {
+
+    // Check if authorization header set
+    if(!req.headers.authorization) return reject({code: 400, message: `Authorization header not set`})
+    // parse the headers to get the token
+    const token = req.headers.authorization.split(" ")[1];
+    if(!token) return reject({code: 400, message: `Token not found in authorization header`})
+
+    resolve(token)
+
+  })
+}
+
+let error_handling = (res, error) => {
+  console.log(`[Auth] ${error.message || error}`)
+  res.status(error.code || 500).send(error.message || error)
 }
 
 
@@ -143,28 +163,22 @@ exports.login = (req, res) => {
   .then( user => { return check_password(password, user) })
   .then( user => { return generate_token(user) })
   .then( token => { res.send({jwt: token}) })
-  .catch(error => {
-    console.log(error.message || error)
-    res.status(error.code || 500).send(error.message || error)
-  })
+  .catch(error => { error_handling(res, error) })
 
 }
 
 exports.decode_token = (req, res) => {
 
-  retrieve_token(req)
+  retrieve_token_from_body_or_query(req)
   .then( token => {return verify_token(token)})
   .then(decoded_token => { res.send(decoded_token) })
-  .catch(error => {
-    console.log(error.message || error)
-    res.status(error.code || 500).send(error.message || error)
-  })
+  .catch(error => { error_handling(res, error) })
 
 }
 
 exports.find_user_using_token = (req, res) => {
 
-  retrieve_token(req)
+  retrieve_token_from_body_or_query(req)
   .then( token => {return verify_token(token)})
   .then( decoded_token => {
 
@@ -183,9 +197,31 @@ exports.find_user_using_token = (req, res) => {
     console.log(`[Auth] user ${user._id} retrieved using token`)
     res.send(user)
   })
-  .catch(error => {
-    console.log(`[Auth] ${error.message || error}`)
-    res.status(error.code || 500).send(error.message || error)
+  .catch(error => { error_handling(res, error) })
+
+}
+
+exports.whoami = (req, res) => {
+
+  retrieve_token_from_headers(req)
+  .then( token => {return verify_token(token)})
+  .then( decoded_token => {
+
+    const user_id = decoded_token.user_id
+    if(!user_id) throw {code: 400, message: `No user ID in token`}
+
+    try {
+      const identifier = mongodb.ObjectID(user_id)
+      return find_user_in_db(identifier)
+    } catch (e) {
+      throw `Invalid user ID`
+    }
+
   })
+  .then( user => {
+    console.log(`[Auth] user ${user._id} retrieved using token`)
+    res.send(user)
+  })
+  .catch(error => { error_handling(res, error) })
 
 }
