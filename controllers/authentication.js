@@ -6,15 +6,12 @@ const mongodb = require('../mongodb.js')
 dotenv.config()
 
 
-let find_user_in_db = (identifier) => {
+const find_user_in_db = (identifier) => {
 
   return new Promise ( (resolve, reject) => {
 
-    mongodb.MongoClient.connect( mongodb.url, mongodb.options, (error, db) => {
-
-      // Handle DB connection errors
-      if (error) return reject(error)
-
+    mongodb.MongoClient.connect( mongodb.url, mongodb.options)
+    .then(db => {
       // prepare the query
       const query = { $or: [
         { username: identifier },
@@ -23,30 +20,28 @@ let find_user_in_db = (identifier) => {
         { _id: identifier },
       ]}
 
-      db.db(mongodb.db)
+      return db.db(mongodb.db)
       .collection(mongodb.collection)
-      .findOne(query, (error, user) => {
-
-        // Close the connection to the DB
-        db.close()
-
-        // Handle DB errors
-        if (error) return reject({code: 500, message: error})
-
-        // Handle user not being found
-        if(!user) return reject({code: 400, message: `User ${identifier} not found in the database`})
-
-        // Resolve with user
-        resolve(user)
-
-        console.log(`[MongoDB] User ${user._id} found in the database`)
-
-      })
+      .findOne(query)
     })
+    .then(result => {
+      // Handle user not being found
+      // NOT IDEAL
+      if(!user) return reject({code: 400, message: `User ${identifier} not found in the database`})
+
+      // Resolve with user
+      resolve(user)
+
+      console.log(`[MongoDB] User ${user._id} found in the database`)
+    })
+    .catch(error => {
+      reject({code: 500, message: error})
+    })
+
   })
 }
 
-let check_password = (password_plain, user) => {
+const check_password = (password_plain, user) => {
   return new Promise ( (resolve, reject) => {
 
     const password_hashed = user.password_hashed
@@ -66,7 +61,7 @@ let check_password = (password_plain, user) => {
   })
 }
 
-let generate_token = (user) => {
+const generate_token = (user) => {
   return new Promise( (resolve, reject) => {
 
     const JWT_SECRET = process.env.JWT_SECRET
@@ -90,7 +85,7 @@ let generate_token = (user) => {
   })
 }
 
-let verify_token = (token) => {
+const verify_token = (token) => {
   return new Promise ( (resolve, reject) => {
 
     const JWT_SECRET = process.env.JWT_SECRET
@@ -111,7 +106,7 @@ let verify_token = (token) => {
 }
 
 
-let retrieve_token_from_body_or_query = (req) => {
+const retrieve_token_from_body_or_query = (req) => {
   return new Promise ( (resolve, reject) => {
 
     const token = req.body.token
@@ -126,7 +121,7 @@ let retrieve_token_from_body_or_query = (req) => {
   })
 }
 
-let retrieve_token_from_headers = (req) => {
+const retrieve_token_from_headers = (req) => {
   return new Promise ( (resolve, reject) => {
 
     // Check if authorization header set
@@ -140,7 +135,7 @@ let retrieve_token_from_headers = (req) => {
   })
 }
 
-let error_handling = (res, error) => {
+const error_handling = (res, error) => {
   console.log(`[Auth] ${error.message || error}`)
   res.status(error.code || 500).send(error.message || error)
 }
@@ -160,9 +155,9 @@ exports.login = (req, res) => {
   if(!password) return res.status(400).send(`Missing password`)
 
   find_user_in_db(user_identifier)
-  .then( user => { return check_password(password, user) })
-  .then( user => { return generate_token(user) })
-  .then( token => { res.send({jwt: token}) })
+  .then( user => check_password(password, user))
+  .then( generate_token )
+  .then( jwt => { res.send({jwt}) })
   .catch(error => { error_handling(res, error) })
 
 }
