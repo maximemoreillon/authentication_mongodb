@@ -24,7 +24,7 @@ const find_user_in_db = (identifier) => {
       .collection(mongodb.collection)
       .findOne(query)
     })
-    .then(result => {
+    .then( user => {
       // Handle user not being found
       // NOT IDEAL
       if(!user) return reject({code: 400, message: `User ${identifier} not found in the database`})
@@ -155,10 +155,10 @@ exports.login = (req, res) => {
   if(!password) return res.status(400).send(`Missing password`)
 
   find_user_in_db(user_identifier)
-  .then( user => check_password(password, user))
+  .then( user => check_password(password, user) )
   .then( generate_token )
   .then( jwt => { res.send({jwt}) })
-  .catch(error => { error_handling(res, error) })
+  .catch( error => { error_handling(res, error) })
 
 }
 
@@ -167,7 +167,7 @@ exports.decode_token = (req, res) => {
   retrieve_token_from_body_or_query(req)
   .then( token => {return verify_token(token)})
   .then(decoded_token => { res.send(decoded_token) })
-  .catch(error => { error_handling(res, error) })
+  .catch( error => { error_handling(res, error) })
 
 }
 
