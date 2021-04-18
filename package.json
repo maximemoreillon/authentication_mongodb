@@ -1,6 +1,6 @@
 {
   "name": "authentication_mongo",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "A simple authentication API using MongoDB as user database",
   "main": "index.js",
   "scripts": {
